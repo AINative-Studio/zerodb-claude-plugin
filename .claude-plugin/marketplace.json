@@ -1,0 +1,24 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "ainative-plugins",
+  "description": "Official AINative Studio plugins for Claude Code — ZeroDB memory, context tools, and more",
+  "owner": {
+    "name": "AINative Studio",
+    "email": "support@ainative.studio"
+  },
+  "plugins": [
+    {
+      "name": "zerodb-memory",
+      "description": "Persistent cross-session memory for Claude Code. Automatically stores and recalls project context, architecture decisions, bugs, conventions, and code ownership across sessions.",
+      "author": {
+        "name": "AINative Studio",
+        "email": "support@ainative.studio"
+      },
+      "category": "productivity",
+      "homepage": "https://ainative.studio/products/zerodb",
+      "version": "1.0.0",
+      "tags": ["memory", "context", "zerodb", "productivity"],
+      "source": "."
+    }
+  ]
+}
