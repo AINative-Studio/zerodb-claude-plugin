@@ -38,6 +38,11 @@ fi
 # Read hook input (Claude Code passes event context via stdin)
 INPUT=$(cat 2>/dev/null || echo "{}")
 
+# Update status cache — mark as saving while persist runs
+CACHE_DIR="${TMPDIR:-/tmp}/zerodb-status"
+mkdir -p "$CACHE_DIR"
+echo '{"count": null, "state": "saving", "last_updated": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > "${CACHE_DIR}/status.json"
+
 # Output the trigger payload for Claude to act on.
 # Claude Code's Stop hook output is surfaced to Claude, which will then
 # use the zerodb-memory-guide skill to run the actual memory extraction
