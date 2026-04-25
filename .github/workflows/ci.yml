@@ -139,3 +139,32 @@ jobs:
         run: |
           npx --yes ainative-zerodb-memory-mcp@latest --help 2>&1 || true
           echo "MCP server package installs successfully"
+
+  e2e-tests:
+    name: E2E tests (live API)
+    runs-on: ubuntu-latest
+    # Only run on main branch pushes — requires live credentials
+    if: github.ref == 'refs/heads/main' || github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install test dependencies
+        run: pip install pytest pytest-cov requests pyyaml
+
+      - name: Run E2E test suite
+        env:
+          ZERODB_API_TOKEN: ${{ secrets.ZERODB_API_TOKEN }}
+          ZERODB_PROJECT_ID: ${{ secrets.ZERODB_PROJECT_ID }}
+          AINATIVE_API_TOKEN: ${{ secrets.ZERODB_API_TOKEN }}
+        run: |
+          python3 -m pytest tests/e2e/test_zerodb_api.py \
+            -v \
+            --tb=short \
+            --cov=tests/e2e \
+            --cov-report=term-missing \
+            --cov-fail-under=90
