@@ -803,3 +803,98 @@ class TestCIPipeline:
         data = json.loads((PLUGIN_ROOT / ".claude-plugin" / "plugin.json").read_text())
         for event, path in data.get("hooks", {}).items():
             assert (PLUGIN_ROOT / path).exists(), f"Hook {event} references missing file: {path}"
+
+
+# ---------------------------------------------------------------------------
+# 10. CLAUDE.md Export Skill
+# ---------------------------------------------------------------------------
+
+class TestCLAUDEmdExport:
+    """Validate the claudemd-export skill file exists and is fully specified."""
+
+    SKILL_PATH = PLUGIN_ROOT / "skills" / "claudemd-export" / "SKILL.md"
+
+    def _skill_content(self) -> str:
+        return self.SKILL_PATH.read_text()
+
+    def test_export_claudemd_skill_file_exists(self):
+        """skills/claudemd-export/SKILL.md must exist."""
+        assert self.SKILL_PATH.exists(), "Missing: skills/claudemd-export/SKILL.md"
+
+    def test_export_claudemd_skill_has_frontmatter(self):
+        """Skill file must have valid YAML frontmatter block."""
+        content = self._skill_content()
+        assert content.startswith("---"), "claudemd-export/SKILL.md missing opening YAML frontmatter (---)"
+        lines = content.split("\n")
+        closing_markers = [i for i, line in enumerate(lines[1:], 1) if line.strip() == "---"]
+        assert len(closing_markers) >= 1, "claudemd-export/SKILL.md missing closing frontmatter (---)"
+        # description field must be present inside the frontmatter block
+        frontmatter_end = closing_markers[0]
+        frontmatter_body = "\n".join(lines[1:frontmatter_end])
+        assert "description:" in frontmatter_body, \
+            "claudemd-export/SKILL.md frontmatter missing 'description:' field"
+
+    def test_export_claudemd_skill_covers_all_memory_types(self):
+        """Skill must document all 6 memory types and their section mappings."""
+        content = self._skill_content()
+        required_types = ["architecture", "convention", "ownership", "in-progress", "bug", "correction"]
+        for memory_type in required_types:
+            assert memory_type in content, \
+                f"claudemd-export/SKILL.md does not mention memory type '{memory_type}'"
+        # Also verify the corresponding CLAUDE.md section headings are documented
+        required_sections = [
+            "## Architecture",
+            "## Conventions",
+            "## File Ownership",
+            "## Active Work",
+            "## Known Issues",
+            "## Important Corrections",
+        ]
+        for section in required_sections:
+            assert section in content, \
+                f"claudemd-export/SKILL.md does not document section '{section}'"
+
+    def test_export_claudemd_skill_has_dedup_logic(self):
+        """Skill must describe deduplication of semantically equivalent memories."""
+        content = self._skill_content()
+        # At least one of these terms should appear in the dedup section
+        dedup_signals = ["dedup", "duplicate", "semantically equivalent", "same fact", "overlaps"]
+        found = any(signal.lower() in content.lower() for signal in dedup_signals)
+        assert found, (
+            "claudemd-export/SKILL.md must describe deduplication logic. "
+            "Expected one of: " + ", ".join(dedup_signals)
+        )
+        # Must also specify what to keep (most recent / most detailed)
+        keep_signals = ["most recent", "most recently", "more detailed", "specificity", "keep only"]
+        found_keep = any(signal.lower() in content.lower() for signal in keep_signals)
+        assert found_keep, (
+            "claudemd-export/SKILL.md must specify which duplicate to keep (most recent / most detailed)"
+        )
+
+    def test_export_claudemd_skill_has_dry_run_option(self):
+        """Skill must document the --dry-run flag."""
+        content = self._skill_content()
+        assert "--dry-run" in content, \
+            "claudemd-export/SKILL.md must document the --dry-run flag"
+        # Confirm it clarifies that dry-run does NOT write any file
+        dry_run_signals = ["do not write", "don't write", "No files written", "not write", "without writing"]
+        found = any(signal.lower() in content.lower() for signal in dry_run_signals)
+        assert found, \
+            "claudemd-export/SKILL.md must clarify that --dry-run does not write any file"
+
+    def test_export_claudemd_skill_references_update_vs_create(self):
+        """Skill must document the update-vs-create flow including merge mode."""
+        content = self._skill_content()
+        # Must mention behaviour when CLAUDE.md already exists
+        exists_signals = ["already exists", "if.*exist", "update vs", "update vs. create"]
+        found_exists = any(signal.lower() in content.lower() for signal in exists_signals)
+        assert found_exists, \
+            "claudemd-export/SKILL.md must describe behaviour when CLAUDE.md already exists"
+        # Must mention merge mode
+        assert "merge" in content.lower(), \
+            "claudemd-export/SKILL.md must describe 'merge' mode for preserving existing manual content"
+        # Must mention diff preview
+        diff_signals = ["diff", "what would change", "preview"]
+        found_diff = any(signal.lower() in content.lower() for signal in diff_signals)
+        assert found_diff, \
+            "claudemd-export/SKILL.md must show a diff/preview before overwriting an existing CLAUDE.md"
