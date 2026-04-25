@@ -49,6 +49,11 @@ if git rev-parse --git-dir > /dev/null 2>&1; then
   fi
 fi
 
+# Update status cache — mark as synced after recall completes
+CACHE_DIR="${TMPDIR:-/tmp}/zerodb-status"
+mkdir -p "$CACHE_DIR"
+echo '{"count": null, "state": "synced", "last_updated": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}' > "${CACHE_DIR}/status.json"
+
 # Output trigger payload. Claude will call zerodb_get_context and
 # zerodb_semantic_search via MCP, then inject memories as context.
 cat <<EOF
