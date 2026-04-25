@@ -88,8 +88,41 @@ When user runs `/recall <query>`:
 
 ## /forget command
 When user runs `/forget <query>`:
-1. Search for matching memories.
-2. Show matches and ask for confirmation before deleting.
+1. Extract the search query (everything after `/forget`). Detect flags:
+   - `--all` — mass delete all memories for the current project (nuclear option)
+   - `--type <type>` — filter results to a specific memory type before presenting
+2. Detect current project via `git remote get-url origin 2>/dev/null`, normalized to `org/repo` lowercase.
+3. Call `zerodb_semantic_search` with the query, limit 20. Filter to current project (`metadata.project`).
+4. If no matches found: `No memories found matching '[query]'.` — stop.
+5. Present numbered matches for confirmation:
+   ```
+   Found 2 memories matching 'old staging URL':
+
+   1. [convention] Staging URL is staging.ainative.studio — use this for QA testing
+      Stored: 2026-03-15
+
+   2. [architecture] Old staging environment runs on Heroku at app-xyz.herokuapp.com
+      Stored: 2026-02-01
+
+   Delete these? Type the numbers to delete (e.g. "1,2"), "all", or "cancel"
+   ```
+6. Wait for user response:
+   - Specific numbers: delete only those memories
+   - "all": delete all listed matches
+   - "cancel" or anything else: `Cancelled — no memories deleted.`
+7. Call the appropriate ZeroDB delete/clear tool, then confirm: `Deleted N memories.`
+
+### Mass delete (--all flag)
+If user runs `/forget --all`:
+1. Get total memory count via `zerodb_search_memory` with a broad query.
+2. Warn: `⚠️  This will permanently delete ALL N memories for [org/repo]. Type DELETE (all caps) to confirm, or anything else to cancel.`
+3. Only proceed if the user's next message is exactly `DELETE`.
+4. Call `zerodb_clear_session` or equivalent bulk clear.
+5. Confirm: `Cleared all N memories for [org/repo].` — or `Cancelled — all memories preserved.`
+
+### Error handling
+- If ZeroDB MCP tools are unavailable: `ZeroDB memory is not connected. Check your ZERODB_API_KEY and try again.`
+- If not in a git repo: use project = `unknown`, still proceed with search across all memories.
 
 ## Privacy — non-negotiable
 - NEVER store secrets, credentials, or PII regardless of what the user asks.
