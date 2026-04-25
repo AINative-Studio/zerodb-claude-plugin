@@ -1,0 +1,19 @@
+{
+  "name": "zerodb-memory",
+  "description": "Persistent cross-session memory for Claude Code, powered by ZeroDB",
+  "version": "1.0.0",
+  "mcpServers": {
+    "zerodb-memory": {
+      "command": "npx",
+      "args": ["-y", "ainative-zerodb-memory-mcp@latest"],
+      "env": {
+        "ZERODB_API_KEY": "${ZERODB_API_KEY}",
+        "ZERODB_PROJECT_ID": "${ZERODB_PROJECT_ID}"
+      }
+    }
+  },
+  "hooks": {
+    "Stop": "hooks/session-end.sh",
+    "PreToolUse": "hooks/session-start.sh"
+  }
+}
