@@ -16,24 +16,11 @@ if [ -z "${ZERODB_API_KEY:-}" ]; then
   exit 0
 fi
 
-# Detect current project from git remote
-PROJECT=""
-if git rev-parse --git-dir > /dev/null 2>&1; then
-  REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
-  if [ -n "$REMOTE" ]; then
-    # Normalize: strip protocol, strip .git, lowercase
-    # Handles: git@github.com:org/repo.git and https://github.com/org/repo.git
-    PROJECT=$(echo "$REMOTE" \
-      | sed 's|^https\?://||' \
-      | sed 's|^git@||' \
-      | sed 's|:|/|' \
-      | sed 's|\.git$||' \
-      | sed 's|.*github\.com/||' \
-      | sed 's|.*gitlab\.com/||' \
-      | sed 's|.*bitbucket\.org/||' \
-      | tr '[:upper:]' '[:lower:]')
-  fi
-fi
+# Source project identity library
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/project-id.sh
+source "${SCRIPT_DIR}/../lib/project-id.sh"
+PROJECT=$(zerodb_get_project_id)
 
 # Read hook input (Claude Code passes event context via stdin)
 INPUT=$(cat 2>/dev/null || echo "{}")

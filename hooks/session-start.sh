@@ -32,22 +32,11 @@ fi
 # Mark as recalled for this session
 touch "$SENTINEL_FILE"
 
-# Detect current project from git remote
-PROJECT=""
-if git rev-parse --git-dir > /dev/null 2>&1; then
-  REMOTE=$(git remote get-url origin 2>/dev/null || echo "")
-  if [ -n "$REMOTE" ]; then
-    PROJECT=$(echo "$REMOTE" \
-      | sed 's|^https\?://||' \
-      | sed 's|^git@||' \
-      | sed 's|:|/|' \
-      | sed 's|\.git$||' \
-      | sed 's|.*github\.com/||' \
-      | sed 's|.*gitlab\.com/||' \
-      | sed 's|.*bitbucket\.org/||' \
-      | tr '[:upper:]' '[:lower:]')
-  fi
-fi
+# Source project identity library
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=lib/project-id.sh
+source "${SCRIPT_DIR}/../lib/project-id.sh"
+PROJECT=$(zerodb_get_project_id)
 
 # Output trigger payload. Claude will call zerodb_get_context and
 # zerodb_semantic_search via MCP, then inject memories as context.
