@@ -9,11 +9,8 @@
       "name": "zerodb-memory",
       "description": "Persistent cross-session memory for Claude Code. Automatically stores and recalls project context, architecture decisions, bugs, conventions, and code ownership across sessions.",
       "homepage": "https://ainative.studio/products/zerodb",
-      "source": {
-        "source": "url",
-        "url": "https://github.com/AINative-Studio/zerodb-claude-plugin.git",
-        "sha": "9debdb249bb737c7a44d198d9d198c4144f8aa2e"
-      }
+      "source": "."
     }
-  ]
+  ],
+  "description": "Official AINative Studio plugins for Claude Code \u2014 ZeroDB memory, context tools, and more"
 }

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # session-start.sh — ZeroDB Memory auto-recall hook
-# Fires on PreToolUse. Injects relevant memories at session start.
-# Runs only once per session via a session-scoped sentinel file.
+# Fires on SessionStart. Injects relevant memories at session start.
+# The sentinel file below is now redundant (SessionStart already fires
+# exactly once per session) but left as defense-in-depth.
 # Refs #4
 
 set -euo pipefail
