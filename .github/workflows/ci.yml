@@ -96,18 +96,29 @@ jobs:
       - name: Validate hooks reference matches plugin.json
         run: |
           python3 - <<'EOF'
-          import json, os, sys
+          import json, os, re, sys
 
           with open(".claude-plugin/plugin.json") as f:
               plugin = json.load(f)
 
           hooks = plugin.get("hooks", {})
           errors = []
-          for event, path in hooks.items():
-              if not os.path.isfile(path):
-                  errors.append(f"Hook '{event}' references missing file: {path}")
-              else:
-                  print(f"  Hook {event} -> {path} OK")
+
+          # hooks schema: {"EventName": [{"hooks": [{"type": "command", "command": "..."}], "matcher": "..."?}]}
+          for event, matchers in hooks.items():
+              if not isinstance(matchers, list):
+                  errors.append(f"Hook '{event}' should be a list of matcher blocks, got {type(matchers).__name__}")
+                  continue
+              for block in matchers:
+                  for entry in block.get("hooks", []):
+                      command = entry.get("command", "")
+                      # command is like "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/x.sh" — strip quotes/var, resolve relative to repo root
+                      resolved = command.replace('"${CLAUDE_PLUGIN_ROOT}"', ".").replace("${CLAUDE_PLUGIN_ROOT}", ".").strip('"')
+                      path = re.split(r"\s", resolved, maxsplit=1)[0]
+                      if not os.path.isfile(path):
+                          errors.append(f"Hook '{event}' references missing file: {path} (from command: {command})")
+                      else:
+                          print(f"  Hook {event} -> {path} OK")
 
           if errors:
               for e in errors:
