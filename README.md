@@ -16,14 +16,16 @@ Claude Code loses all context at the end of every session. This plugin fixes tha
 
 ## Auth
 
-Set your ZeroDB API key before the first session:
+**Nothing to do.** On first use the plugin auto-provisions a free trial ZeroDB project for you and stores the credentials at `~/.zerodb/credentials.env` — no signup, no exported env vars, no copy-pasted keys. The trial is unclaimed by default; the plugin surfaces a claim link the first time this happens so you can attach it to a real account and keep it permanently.
+
+Already have a ZeroDB account? Set these before your first session and the plugin will use them instead of provisioning a trial:
 
 ```bash
 export ZERODB_API_KEY=your_api_key_here
 export ZERODB_PROJECT_ID=your_project_id  # optional, auto-detected if omitted
 ```
 
-No account? [Sign up free](https://ainative.studio/signup?ref=claude-plugin) — 500 credits included, no card required.
+To disable auto-provisioning entirely (e.g. in CI or an offline environment), set `ZERODB_NO_AUTO_PROVISION=1`.
 
 ## How it works
 
@@ -58,8 +60,9 @@ No account? [Sign up free](https://ainative.studio/signup?ref=claude-plugin) —
 
 | Env var | Default | Description |
 |---|---|---|
-| `ZERODB_API_KEY` | — | Required. Your ZeroDB API key |
+| `ZERODB_API_KEY` | auto-provisioned | Your ZeroDB API key — set it to use an existing account instead of a trial |
 | `ZERODB_PROJECT_ID` | auto | ZeroDB project ID (auto-detected from git remote) |
+| `ZERODB_NO_AUTO_PROVISION` | unset | Set to `1` to disable trial auto-provisioning and fail instead |
 | `ZERODB_AUTOPERSIST` | `on` | Auto-persist mode: `on`, `off`, or `review` |
 | `ZERODB_AUTORECALL` | `on` | Auto-recall on session start: `on` or `off` |
 
