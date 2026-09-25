@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # session-end.sh — ZeroDB Memory auto-persist hook
-# Fires on Stop event. Signals Claude to extract and store session memories.
+# Fires on SessionEnd. Signals Claude to extract and store session memories.
 # Refs #3
 
 set -euo pipefail
