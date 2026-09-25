@@ -12,9 +12,22 @@ if [ "${ZERODB_AUTORECALL:-on}" = "off" ]; then
   exit 0
 fi
 
-# Check if ZeroDB API key is configured
+SCRIPT_DIR_EARLY="$(cd "$(dirname "$0")" && pwd)"
+
+# Resolve credentials the same way the MCP server does (env, persisted
+# cache, sibling tool, or auto-provisioned trial) so a fresh install with
+# no ZERODB_API_KEY exported still gets a working recall + a claim-link
+# announcement instead of silently doing nothing.
 if [ -z "${ZERODB_API_KEY:-}" ]; then
-  exit 0
+  RESOLVED=$("${SCRIPT_DIR_EARLY}/../lib/ensure-credentials.sh" 2>/dev/null) || exit 0
+  ZERODB_API_KEY=$(printf '%s\n' "$RESOLVED" | sed -n 's/^ZERODB_API_KEY=//p')
+  [ -n "$ZERODB_API_KEY" ] || exit 0
+fi
+
+CLAIM_URL=""
+CACHE_DIR_EARLY="${TMPDIR:-/tmp}/zerodb-status"
+if [ -f "${CACHE_DIR_EARLY}/status.json" ] && grep -q '"state": *"trial_provisioned"' "${CACHE_DIR_EARLY}/status.json" 2>/dev/null; then
+  CLAIM_URL=$(sed -n 's/.*"claim_url": *"\([^"]*\)".*/\1/p' "${CACHE_DIR_EARLY}/status.json")
 fi
 
 # Session sentinel — only run once per Claude Code session.
@@ -46,10 +59,16 @@ echo '{"count": null, "state": "synced", "last_updated": "'"$(date -u +%Y-%m-%dT
 
 # Output trigger payload. Claude will call zerodb_get_context and
 # zerodb_semantic_search via MCP, then inject memories as context.
+if [ -n "$CLAIM_URL" ]; then
+  INSTRUCTION="A free trial ZeroDB project was just auto-provisioned for you — no signup needed to start using memory. It expires in 72 hours unless claimed. Tell the user once, briefly: memory is active, and they can claim this project permanently at ${CLAIM_URL}. Then load memories for this project using zerodb_get_context and zerodb_semantic_search. Follow the zerodb-memory-guide skill instructions."
+else
+  INSTRUCTION="Load memories for this project using zerodb_get_context and zerodb_semantic_search. Inject the most relevant memories as context before responding. Announce how many memories were loaded, or stay silent if zero. Follow the zerodb-memory-guide skill instructions."
+fi
+
 cat <<EOF
 {
   "zerodb_trigger": "session_start",
   "project": "${PROJECT:-unknown}",
-  "instruction": "Load memories for this project using zerodb_get_context and zerodb_semantic_search. Inject the most relevant memories as context before responding. Announce how many memories were loaded, or stay silent if zero. Follow the zerodb-memory-guide skill instructions."
+  "instruction": "${INSTRUCTION}"
 }
 EOF
