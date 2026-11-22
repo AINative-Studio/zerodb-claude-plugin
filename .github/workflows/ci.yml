@@ -146,9 +146,18 @@ jobs:
           fi
           echo "ainative-zerodb-memory-mcp@$VERSION found on npm"
 
-      - name: Dry-run MCP server install
+      - name: Dry-run MCP server install (pinned version from start-mcp-server.sh)
         run: |
-          npx --yes ainative-zerodb-memory-mcp@latest --help 2>&1 || true
+          # Extract the exact pinned version bin/start-mcp-server.sh will
+          # run, rather than hardcoding it here too -- so this smoke test
+          # can never silently drift from what actually ships to users.
+          PINNED=$(grep -oE 'ainative-zerodb-memory-mcp@[0-9][0-9A-Za-z.+-]*' bin/start-mcp-server.sh | head -1)
+          if [ -z "$PINNED" ]; then
+            echo "ERROR: could not find a pinned ainative-zerodb-memory-mcp@<version> in bin/start-mcp-server.sh"
+            exit 1
+          fi
+          echo "Smoke-testing pinned version: $PINNED"
+          npx --yes "$PINNED" --help 2>&1 || true
           echo "MCP server package installs successfully"
 
   e2e-tests:
