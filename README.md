@@ -1,5 +1,9 @@
 # ZeroDB Memory — Claude Code Plugin
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.1.1-informational.svg)](.claude-plugin/plugin.json)
+[![CI](https://github.com/AINative-Studio/zerodb-claude-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/AINative-Studio/zerodb-claude-plugin/actions/workflows/ci.yml)
+
 Persistent cross-session memory for Claude Code, powered by [ZeroDB](https://ainative.studio/products/zerodb).
 
 Claude Code loses all context at the end of every session. This plugin fixes that. It automatically stores what Claude learns during a session and recalls it the next time you start working — architecture decisions, bug discoveries, conventions, code ownership, and in-progress work.
@@ -108,6 +112,12 @@ Average session: ~25 credits (~$0.25). [See pricing](https://ainative.studio/pri
 
 Full docs: [docs.ainative.studio/claude-plugin](https://docs.ainative.studio/claude-plugin)
 
+## Contributing
+
+Bug reports, feature requests, and pull requests are welcome — see
+[CONTRIBUTING.md](CONTRIBUTING.md). This project follows a
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## License
 
-MIT — [AINative Studio](https://ainative.studio)
+[MIT](LICENSE) — [AINative Studio](https://ainative.studio)
