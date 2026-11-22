@@ -464,11 +464,16 @@ class TestPluginStructure:
         assert "args" in mcp
 
     def test_plugin_json_hooks_declared(self):
+        # Claude Code's actual hook events for this plugin are SessionStart
+        # (inject memory at session start) and SessionEnd (persist memory
+        # at session end) -- "Stop"/"PreToolUse" were marketing-doc
+        # terminology (docs/show-hn-draft.md) that never matched the real
+        # hook model plugin.json has always correctly used.
         data = json.loads((PLUGIN_ROOT / ".claude-plugin" / "plugin.json").read_text())
         assert "hooks" in data
         hooks = data["hooks"]
-        assert "Stop" in hooks
-        assert "PreToolUse" in hooks
+        assert "SessionStart" in hooks
+        assert "SessionEnd" in hooks
 
     def test_marketplace_json_exists(self):
         assert (PLUGIN_ROOT / ".claude-plugin" / "marketplace.json").exists()
@@ -584,8 +589,22 @@ class TestHookScripts:
         assert "project" in payload
         assert "instruction" in payload
 
-    def test_session_start_hook_no_key_exits_zero(self):
-        env = {**os.environ, "ZERODB_API_KEY": "", "CLAUDE_SESSION_ID": "test-no-key"}
+    def test_session_start_hook_no_key_exits_zero(self, tmp_path):
+        # With no ZERODB_API_KEY, session-start.sh now tries to
+        # auto-provision via lib/ensure-credentials.sh rather than exiting
+        # immediately (Refs #32) -- so this only exits silently once every
+        # credential source is genuinely unavailable: no env var, no
+        # persisted ~/.claude/zerodb-memory/credentials.env, no sibling
+        # ~/.zerodb/.env, and auto-provisioning itself disabled. Point HOME
+        # at an empty tmp dir so a real machine's cached/sibling
+        # credentials can't leak into this "truly no key" scenario.
+        env = {
+            **os.environ,
+            "ZERODB_API_KEY": "",
+            "CLAUDE_SESSION_ID": "test-no-key",
+            "HOME": str(tmp_path),
+            "ZERODB_NO_AUTO_PROVISION": "1",
+        }
         result = subprocess.run(
             [str(PLUGIN_ROOT / "hooks" / "session-start.sh")],
             input="{}",
@@ -800,9 +819,24 @@ class TestCIPipeline:
         assert len(data["jobs"]) >= 1
 
     def test_plugin_json_hooks_reference_existing_files(self):
+        # plugin.json's real hooks schema is a nested structure --
+        # {event: [{"hooks": [{"type": "command", "command": "..."}]}]} --
+        # not a flat {event: path} mapping. Walk it and pull the actual
+        # file path out of each command string, stripping the
+        # ${CLAUDE_PLUGIN_ROOT} variable and surrounding quotes.
         data = json.loads((PLUGIN_ROOT / ".claude-plugin" / "plugin.json").read_text())
-        for event, path in data.get("hooks", {}).items():
-            assert (PLUGIN_ROOT / path).exists(), f"Hook {event} references missing file: {path}"
+        for event, hook_groups in data.get("hooks", {}).items():
+            for group in hook_groups:
+                for hook in group.get("hooks", []):
+                    command = hook["command"]
+                    path = (
+                        command.replace("${CLAUDE_PLUGIN_ROOT}", "")
+                        .replace('"', "")
+                        .lstrip("/")
+                    )
+                    assert (PLUGIN_ROOT / path).exists(), (
+                        f"Hook {event} references missing file: {path}"
+                    )
 
 
 # ---------------------------------------------------------------------------

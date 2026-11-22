@@ -27,4 +27,10 @@ export ZERODB_PROJECT_ID
 ZERODB_API_KEY=$(printf '%s\n' "$CREDS" | sed -n 's/^ZERODB_API_KEY=//p')
 ZERODB_PROJECT_ID=$(printf '%s\n' "$CREDS" | sed -n 's/^ZERODB_PROJECT_ID=//p')
 
-exec npx -y ainative-zerodb-memory-mcp@latest
+# Pinned to a specific version rather than @latest: an unpinned,
+# always-latest fetch here is non-reproducible (the resolved code can
+# silently change between a security scan and an actual install, or
+# between one session and the next) and has repeatedly failed the
+# Claude plugin directory's security scan for exactly that reason.
+# Bump this deliberately when upgrading, same as any other dependency.
+exec npx -y ainative-zerodb-memory-mcp@1.3.0

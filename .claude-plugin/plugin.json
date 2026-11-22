@@ -1,7 +1,7 @@
 {
   "name": "zerodb-memory",
   "description": "Persistent cross-session memory for Claude Code, powered by ZeroDB",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {
     "name": "AINative Studio",
     "email": "support@ainative.studio"
