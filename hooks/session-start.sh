@@ -52,6 +52,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${SCRIPT_DIR}/../lib/project-id.sh"
 PROJECT=$(zerodb_get_project_id)
 
+# Source team-project config library and resolve a team project ID (if
+# this repo has one configured) up front, so the instruction below can
+# tell Claude to merge in team recall in the same turn instead of making
+# it discover that fact on its own partway through a separate call.
+# shellcheck source=lib/team-project.sh
+source "${SCRIPT_DIR}/../lib/team-project.sh"
+TEAM_PROJECT_ID=$(zerodb_get_team_project_id 2>/dev/null || true)
+
 # Update status cache — mark as synced after recall completes
 CACHE_DIR="${TMPDIR:-/tmp}/zerodb-status"
 mkdir -p "$CACHE_DIR"
@@ -59,16 +67,22 @@ echo '{"count": null, "state": "synced", "last_updated": "'"$(date -u +%Y-%m-%dT
 
 # Output trigger payload. Claude will call zerodb_get_context and
 # zerodb_semantic_search via MCP, then inject memories as context.
+TEAM_CLAUSE=""
+if [ -n "$TEAM_PROJECT_ID" ]; then
+  TEAM_CLAUSE=" This repo has a shared team project configured (${TEAM_PROJECT_ID}) — also load and merge memories from it, and label results [team] vs [personal] per the zerodb-memory-guide skill."
+fi
+
 if [ -n "$CLAIM_URL" ]; then
-  INSTRUCTION="A free trial ZeroDB project was just auto-provisioned for you — no signup needed to start using memory. It expires in 72 hours unless claimed. Tell the user once, briefly: memory is active, and they can claim this project permanently at ${CLAIM_URL}. Then load memories for this project using zerodb_get_context and zerodb_semantic_search. Follow the zerodb-memory-guide skill instructions."
+  INSTRUCTION="A free trial ZeroDB project was just auto-provisioned for you — no signup needed to start using memory. It expires in 72 hours unless claimed. Tell the user once, briefly: memory is active, and they can claim this project permanently at ${CLAIM_URL}. Then load memories for this project using zerodb_get_context and zerodb_semantic_search.${TEAM_CLAUSE} Follow the zerodb-memory-guide skill instructions."
 else
-  INSTRUCTION="Load memories for this project using zerodb_get_context and zerodb_semantic_search. Inject the most relevant memories as context before responding. Announce how many memories were loaded, or stay silent if zero. Follow the zerodb-memory-guide skill instructions."
+  INSTRUCTION="Load memories for this project using zerodb_get_context and zerodb_semantic_search.${TEAM_CLAUSE} Inject the most relevant memories as context before responding. Announce how many memories were loaded, or stay silent if zero. Follow the zerodb-memory-guide skill instructions."
 fi
 
 cat <<EOF
 {
   "zerodb_trigger": "session_start",
   "project": "${PROJECT:-unknown}",
+  "team_project": "${TEAM_PROJECT_ID}",
   "instruction": "${INSTRUCTION}"
 }
 EOF

@@ -42,15 +42,31 @@ To disable auto-provisioning entirely (e.g. in CI or an offline environment), se
 /memory stats
 ```
 
+**Team memory:** connect a repo to a shared ZeroDB project so memories captured by any teammate are visible to the whole team, while personal memories stay personal.
+
+```shell
+/memory team setup                          # connect this repo to a shared team project
+/remember --team we deploy from release, never main directly
+/recall --team how do we handle on-call rotation
+/memory list --team                         # or --personal to restrict either direction
+```
+
+`/memory team setup` writes `.claude/zerodb.json` at the repo root — commit it so the whole team picks up the same team project automatically. Once connected, `/recall` and `/memory list` merge personal and team results by relevance, labeled `[personal]` / `[team]`; team memories are tagged with the storing teammate's identity. Run `/memory team setup --remove` to disconnect.
+
 ## Slash commands
 
 | Command | Description |
 |---|---|
 | `/remember <text>` | Manually store a memory |
+| `/remember --team <text>` | Store a memory to the shared team project |
 | `/recall <query>` | Search memories semantically |
+| `/recall --team \| --personal <query>` | Restrict search to the team or personal project |
 | `/forget <query>` | Remove matching memories (with confirmation) |
 | `/memory list` | Browse all memories for this project |
+| `/memory list --team \| --personal` | Restrict the list to the team or personal project |
 | `/memory stats` | Memory count, types, last sync |
+| `/memory team setup [<team-project-id>]` | Connect this repo to a shared team project |
+| `/memory team setup --remove` | Disconnect this repo's team project |
 | `/memory autopersist [on\|off\|review]` | Toggle auto-persist |
 | `/memory autorecall [on\|off]` | Toggle auto-recall |
 | `/memory export` | Export memories as Markdown or JSON |
@@ -65,6 +81,8 @@ To disable auto-provisioning entirely (e.g. in CI or an offline environment), se
 | `ZERODB_NO_AUTO_PROVISION` | unset | Set to `1` to disable trial auto-provisioning and fail instead |
 | `ZERODB_AUTOPERSIST` | `on` | Auto-persist mode: `on`, `off`, or `review` |
 | `ZERODB_AUTORECALL` | `on` | Auto-recall on session start: `on` or `off` |
+
+**Team config** (`.claude/zerodb.json`, repo-level, meant to be committed): `{ "teamProjectId": "...", "personalProjectId": "..." }`. Written by `/memory team setup`; `personalProjectId` is an optional override and most repos only set `teamProjectId`.
 
 ## Privacy
 
@@ -83,6 +101,8 @@ Memory operations bill to your ZeroDB account:
 | Get context bundle | 3 credits |
 
 Average session: ~25 credits (~$0.25). [See pricing](https://ainative.studio/pricing).
+
+`--team` operations bill against the shared team project's own credit balance, not your personal one — see your AINative dashboard for team plan details and usage.
 
 ## Documentation
 

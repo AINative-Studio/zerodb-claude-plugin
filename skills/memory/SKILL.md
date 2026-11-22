@@ -4,28 +4,30 @@ description: Manage ZeroDB memory — browse, search, export, configure auto-per
 
 The user is running the `/memory` command. Parse the subcommand (first word after `/memory`) and act accordingly.
 
-## Subcommand: `/memory list [--page N] [--type <type>]`
+## Subcommand: `/memory list [--page N] [--type <type>] [--team] [--personal]`
 
 List stored memories for the current project.
 
 1. Detect current project via `git remote get-url origin 2>/dev/null`, normalize to `org/repo`.
-2. Call `zerodb_search_memory` with a broad/empty query, filtered to current project.
-3. Display paginated results (20 per page):
+2. Call `zerodb_search_memory` with a broad/empty query, filtered to current project (personal by default).
+3. If a team project is configured (`.claude/zerodb.json` → `teamProjectId`) and neither `--personal` nor `--team` was passed, also fetch team memories and merge both lists, newest-first, each row labeled `[team]` or `[personal]`:
    ```
    Memories for ainative-studio/core (Page 1 of 3)
 
-    1. [architecture] Database connections must go through PgBouncer on port 6432, not 5432
+    1. [personal] [architecture] Database connections must go through PgBouncer on port 6432, not 5432
        2026-04-10
-    2. [convention]   All API endpoints must include Refs #<issue> in commit messages
+    2. [team]     [convention]   All API endpoints must include Refs #<issue> in commit messages
        2026-04-08
-    3. [ownership]    Payments module owned by Sarah — requires sign-off before refactoring
+    3. [personal] [ownership]    Payments module owned by Sarah — requires sign-off before refactoring
        2026-04-05
    ...
 
    /memory list --page 2 for more
    ```
-4. Support `--type <type>` filter: only show memories of that type.
-5. If no memories: `No memories stored for [org/repo] yet. Use /remember to add some.`
+   When no team project is configured, omit the `[team]`/`[personal]` labels entirely — show plain rows like the solo-user example that follows.
+4. `--team` restricts to the team project only (error `No team project set. Run /memory team setup` if none configured). `--personal` restricts to the personal project only, even when a team project exists.
+5. Support `--type <type>` filter: only show memories of that type.
+6. If no memories: `No memories stored for [org/repo] yet. Use /remember to add some.`
 
 ## Subcommand: `/memory search <query>`
 
@@ -36,8 +38,9 @@ Semantic search. Equivalent to `/recall <query>` — run that skill's logic and 
 Show memory statistics for the current project.
 
 1. Detect current project.
-2. Call `zerodb_get_context` and `zerodb_search_memory` to gather counts.
-3. Display:
+2. Call `zerodb_get_context` and `zerodb_search_memory` to gather counts, against the personal project.
+3. Check for a team project (`.claude/zerodb.json` → `teamProjectId`). If present, gather its counts too and show both.
+4. Display (solo user, no team project):
    ```
    ZeroDB Memory Stats — ainative-studio/core
 
@@ -51,6 +54,17 @@ Show memory statistics for the current project.
 
    Last stored:     2026-04-24
    ZeroDB project:  proj_abc123
+   Auto-persist:    on
+   Auto-recall:     on
+   ```
+   Or, with a team project configured:
+   ```
+   ZeroDB Memory Stats — ainative-studio/core
+
+   Personal: 31 memories (proj_abc123)
+   Team:     14 memories (proj_team_xyz789)
+
+   Last stored:     2026-04-24
    Auto-persist:    on
    Auto-recall:     on
    ```
@@ -127,13 +141,51 @@ Pass all flags through to the delegated skill unchanged (e.g. `--output CLAUDE.m
 4. If `--output <filename>` provided: write to that file and confirm `Exported N memories to <filename>`.
 5. Otherwise: display inline and ask `Write to file? (enter filename or press Enter to skip)`.
 
-## Subcommand: `/memory team setup` (Phase 4 — not yet available)
+## Subcommand: `/memory team setup [<team-project-id>]`
 
-Inform the user:
-```
-Team shared memory is coming in Phase 4. 
-Track progress: https://github.com/AINative-Studio/zerodb-claude-plugin/issues/19
-```
+Connect this repo to a shared team ZeroDB project so memories captured by
+any teammate are visible to the whole team. Writes `.claude/zerodb.json`
+at the repo root, which is meant to be **committed to version control** so
+every teammate's Claude Code picks up the same team project automatically.
+
+1. Determine the repo root: `git rev-parse --show-toplevel 2>/dev/null`. If
+   not in a git repo: `Team memory requires a git repository (so .claude/zerodb.json can be shared via version control).` — stop.
+2. Check for an existing `.claude/zerodb.json` with a `teamProjectId` already set.
+   - If one exists and the user didn't pass a new ID: show the current team
+     project ID and ask `A team project is already configured (<id>). Replace it? (y/n)`. Stop if the user declines.
+3. If the user provided `<team-project-id>` as an argument, use it directly.
+   Otherwise, ask: `Enter the ZeroDB team project ID (create one at the AINative dashboard, or ask your team admin for the existing one):` and wait for their reply.
+4. Verify the ID resolves to a real, accessible project — call the same
+   project-resolution the MCP server itself uses (e.g. `zerodb_get_context`
+   with that project ID) and confirm it doesn't error. If it does:
+   `Couldn't verify project <id> — check the ID and that your ZERODB_API_KEY has access to it.` — stop, don't write the config.
+5. Write `.claude/zerodb.json`:
+   ```json
+   {
+     "teamProjectId": "<verified-id>"
+   }
+   ```
+   Preserve a `personalProjectId` key already present in the file (from a
+   prior setup), if any — only add/replace `teamProjectId`.
+6. Confirm to the user:
+   ```
+   Team memory connected: <id>
+
+   .claude/zerodb.json has been created/updated. Commit this file so your
+   whole team picks up shared memory automatically:
+
+     git add .claude/zerodb.json
+     git commit -m "Connect team ZeroDB memory"
+
+   Use /remember --team <text> to store a memory for the whole team, and
+   /recall (or /memory list) will now include team memories alongside
+   your personal ones.
+   ```
+
+### Removing team memory (`/memory team setup --remove`)
+1. If `.claude/zerodb.json` doesn't exist or has no `teamProjectId`: `No team project is configured for this repo.` — stop.
+2. Remove the `teamProjectId` key, preserving any `personalProjectId` entry. If the file would then be empty (`{}`), delete the file entirely instead of leaving an empty JSON object around.
+3. Confirm: `Team memory disconnected. (Existing team memories are not deleted — only this repo's local link to them was removed.) Remember to commit this change: git add .claude/zerodb.json && git commit -m "Disconnect team ZeroDB memory"` (or, if the file was deleted, mention `git rm .claude/zerodb.json` instead).
 
 ## No subcommand / unknown subcommand
 
@@ -148,7 +200,9 @@ ZeroDB Memory — available commands:
   /memory autorecall        Configure auto-recall (on/off)
   /memory export            Export memories as Markdown, JSON, or CLAUDE.md
   /memory clear             Delete all memories for this project
-  /memory team setup        (Phase 4) Connect shared team memory
+  /memory team setup        Connect this repo to a shared team project
+  /memory team setup --remove   Disconnect this repo's team project
 
 Use /remember, /recall, and /forget for quick memory operations.
+Use /remember --team and /recall --team once a team project is connected.
 ```

@@ -25,15 +25,43 @@ git remote get-url origin 2>/dev/null
 
 Normalize to `org/repo` lowercase (strip `.git`, strip protocol prefix). Use `unknown` if not in a git repo.
 
+## Team shared memory
+
+A repo can opt into a shared team ZeroDB project via `.claude/zerodb.json`,
+committed to the repo so every teammate's Claude Code picks it up automatically:
+
+```json
+{
+  "teamProjectId": "proj_team_abc123"
+}
+```
+
+Check for this file at the repo root (same root `git rev-parse --show-toplevel`
+resolves to) at the start of any memory operation. If present:
+- Memories captured by any teammate are visible to the whole team.
+- `zerodb_store_memory` / `zerodb_search_memory` / `zerodb_semantic_search`
+  calls take a `project_id` — use the team project's ID for team-scoped
+  calls instead of (or in addition to) your personal project.
+- Tag team memories with the storing user's identity (e.g. git `user.name`
+  or `user.email`, whichever resolves) in `metadata.author`, so teammates
+  can see who contributed a given memory.
+
+If `.claude/zerodb.json` is absent, missing `teamProjectId`, or malformed,
+behave exactly as if no team project exists — never error or block the
+user's personal memory flow over a missing/bad team config.
+
 ## Auto-recall (session start)
 
 At the start of each session:
 1. Detect the project via git remote.
 2. Call `zerodb_get_context` with the project ID to load stored memories.
 3. Also call `zerodb_semantic_search` using the user's first message as the query, limit 8, to surface the most relevant memories.
-4. Inject recalled memories as context before your first response.
-5. Announce: "I've loaded N memories for [org/repo]." — or stay silent if 0 memories.
-6. Only run recall ONCE per session.
+4. If a team project is configured (see "Team shared memory" above), repeat
+   steps 2–3 against the team project too, and merge both result sets by
+   relevance — don't just concatenate personal-then-team or vice versa.
+5. Inject recalled memories as context before your first response.
+6. Announce: "I've loaded N memories for [org/repo]." (and ", including M from your team" when team results were included) — or stay silent if 0 memories total.
+7. Only run recall ONCE per session.
 
 Check `ZERODB_AUTORECALL` env var — if set to `off`, skip auto-recall.
 
@@ -77,14 +105,23 @@ Check `ZERODB_AUTOPERSIST` env var:
 When user runs `/remember <text>`:
 1. Parse into a structured memory fact.
 2. Assign type based on content.
-3. Call `zerodb_store_memory` with project, type, date metadata.
+3. Call `zerodb_store_memory` with project, type, date metadata, targeting
+   the **personal** project by default.
 4. Confirm: "Stored: [one-line summary]"
+
+When user runs `/remember --team <text>` instead:
+1. Check for a team project per "Team shared memory" above.
+2. If none configured: `No team project set. Run /memory team setup` — stop, don't store anywhere.
+3. Otherwise, parse and store exactly as above, but target the **team**
+   project, and tag `metadata.author` with the storing user's identity.
+4. Confirm: "Stored to team memory: [one-line summary]"
 
 ## /recall command
 When user runs `/recall <query>`:
-1. Call `zerodb_semantic_search` with the query.
-2. Filter to current project (or all if no project results).
-3. Present ranked by relevance with type tags.
+1. Call `zerodb_semantic_search` with the query, against the personal project.
+2. If a team project is configured, also search it and merge results by relevance.
+3. Filter to current project (or all if no project results).
+4. Present ranked by relevance with type tags, labeling each result `[team]` or `[personal]` when a team project is configured (omit the label entirely when there isn't one, to avoid noise for solo users).
 
 ## /forget command
 When user runs `/forget <query>`:
