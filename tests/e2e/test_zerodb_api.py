@@ -77,7 +77,7 @@ def stored_memory_id():
                 "e2e_test": True,
                 "session": TEST_SESSION_ID,
             },
-            "session_id": TEST_SESSION_ID,
+            "namespace": f"session:{TEST_SESSION_ID}",
         },
         timeout=15,
     )
@@ -117,7 +117,7 @@ def multiple_memory_ids():
                     "e2e_test": True,
                     "session": TEST_SESSION_ID,
                 },
-                "session_id": TEST_SESSION_ID,
+                "namespace": f"session:{TEST_SESSION_ID}",
             },
             timeout=15,
         )
@@ -147,7 +147,7 @@ class TestStoreMemory:
             json={
                 "content": "E2E: Test store — should be cleaned up",
                 "metadata": {"project": TEST_PROJECT, "type": "convention", "e2e_test": True},
-                "session_id": TEST_SESSION_ID,
+                "namespace": f"session:{TEST_SESSION_ID}",
             },
             timeout=15,
         )
@@ -165,7 +165,7 @@ class TestStoreMemory:
             headers=api_headers(),
             json={
                 "content": "E2E: UUID validation test",
-                "session_id": TEST_SESSION_ID,
+                "namespace": f"session:{TEST_SESSION_ID}",
             },
             timeout=15,
         )
@@ -183,7 +183,7 @@ class TestStoreMemory:
         resp = requests.post(
             memory_url("recall"),
             headers=api_headers(),
-            json={"query": "PgBouncer port 6432", "session_id": TEST_SESSION_ID, "limit": 10},
+            json={"query": "PgBouncer port 6432", "namespace": f"session:{TEST_SESSION_ID}", "limit": 10},
             timeout=15,
         )
         assert resp.status_code == 200
@@ -197,7 +197,7 @@ class TestStoreMemory:
         resp = requests.post(
             memory_url("remember"),
             headers=api_headers(),
-            json={"content": "E2E: Minimal memory — no metadata", "session_id": TEST_SESSION_ID},
+            json={"content": "E2E: Minimal memory — no metadata", "namespace": f"session:{TEST_SESSION_ID}"},
             timeout=15,
         )
         assert resp.status_code == 200
@@ -212,7 +212,7 @@ class TestStoreMemory:
         resp = requests.post(
             memory_url("remember"),
             headers=api_headers(),
-            json={"content": "", "session_id": TEST_SESSION_ID},
+            json={"content": "", "namespace": f"session:{TEST_SESSION_ID}"},
             timeout=15,
         )
         assert resp.status_code == 200
@@ -231,7 +231,7 @@ class TestStoreMemory:
                 headers=api_headers(),
                 json={
                     "content": f"E2E rate limit test memory #{i+1} of 20",
-                    "session_id": session,
+                    "namespace": f"session:{session}",
                 },
                 timeout=15,
             )
@@ -253,7 +253,7 @@ class TestRecallMemory:
         resp = requests.post(
             memory_url("recall"),
             headers=api_headers(),
-            json={"query": "database port connection", "session_id": TEST_SESSION_ID, "limit": 5},
+            json={"query": "database port connection", "namespace": f"session:{TEST_SESSION_ID}", "limit": 5},
             timeout=15,
         )
         assert resp.status_code == 200
@@ -265,7 +265,7 @@ class TestRecallMemory:
         resp = requests.post(
             memory_url("recall"),
             headers=api_headers(),
-            json={"query": "PgBouncer port 6432", "session_id": TEST_SESSION_ID, "limit": 10},
+            json={"query": "PgBouncer port 6432", "namespace": f"session:{TEST_SESSION_ID}", "limit": 10},
             timeout=15,
         )
         assert resp.status_code == 200
@@ -276,7 +276,7 @@ class TestRecallMemory:
         resp = requests.post(
             memory_url("recall"),
             headers=api_headers(),
-            json={"query": "PgBouncer", "session_id": TEST_SESSION_ID, "limit": 5},
+            json={"query": "PgBouncer", "namespace": f"session:{TEST_SESSION_ID}", "limit": 5},
             timeout=15,
         )
         assert resp.status_code == 200
@@ -291,7 +291,7 @@ class TestRecallMemory:
         resp = requests.post(
             memory_url("recall"),
             headers=api_headers(),
-            json={"query": "Railway DNS Kong upstream", "session_id": TEST_SESSION_ID, "limit": 10},
+            json={"query": "Railway DNS Kong upstream", "namespace": f"session:{TEST_SESSION_ID}", "limit": 10},
             timeout=15,
         )
         assert resp.status_code == 200
@@ -332,7 +332,7 @@ class TestRecallMemory:
         resp = requests.post(
             memory_url("recall"),
             headers=api_headers(),
-            json={"query": "PgBouncer", "session_id": TEST_SESSION_ID, "limit": 10},
+            json={"query": "PgBouncer", "namespace": f"session:{TEST_SESSION_ID}", "limit": 10},
             timeout=15,
         )
         assert resp.status_code == 200
@@ -349,7 +349,7 @@ class TestForgetMemory:
         store_resp = requests.post(
             memory_url("remember"),
             headers=api_headers(),
-            json={"content": "E2E: memory to forget", "session_id": TEST_SESSION_ID},
+            json={"content": "E2E: memory to forget", "namespace": f"session:{TEST_SESSION_ID}"},
             timeout=15,
         )
         assert store_resp.status_code == 200
@@ -372,7 +372,7 @@ class TestForgetMemory:
         store_resp = requests.post(
             memory_url("remember"),
             headers=api_headers(),
-            json={"content": unique_content, "session_id": TEST_SESSION_ID},
+            json={"content": unique_content, "namespace": f"session:{TEST_SESSION_ID}"},
             timeout=15,
         )
         mid = store_resp.json()["memory_id"]
